@@ -10,15 +10,39 @@ import VerifiedValueChart from "./VerifiedValueChart";
 import AdvisorCard from "./AdvisorCard";
 import FdrStatusCard from "./FdrStatusCard";
 import RecentActivitiesCard from "./RecentActivitiesCard";
-import { ChatIcon } from "./Icons";
+import { ChatIcon, MenuIcon, ShieldIcon } from "./Icons";
 import PageLoader from "@/components/loading-ui/PageLoader";
 import "./dashboard.css";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Prevent background scroll and animate mobile drawer content whenever it opens
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+      const sideEl = document.getElementById("side");
+      if (sideEl) {
+        const items = sideEl.querySelectorAll(".ws, .search, #nav > *:not(.hl), .sec, .side-bottom");
+        if (items.length) {
+          gsap.fromTo(
+            items,
+            { x: -20, opacity: 0 },
+            { x: 0, opacity: 1, duration: 0.45, stagger: 0.03, ease: "power2.out", delay: 0.08 }
+          );
+        }
+      }
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   // Master GSAP Intro Sequence & Button Micro-Interactions (Cinematic & Eye-Catching)
   useEffect(() => {
@@ -108,7 +132,7 @@ export default function Dashboard() {
 
     // Interactive Button Micro-Animations (smooth hover lift & tap squeeze)
     const interactiveButtons = rootRef.current.querySelectorAll(
-      ".btn-black, .pill-btn, .fab, .icon-btn, .select, .sq"
+      ".btn-black, .pill-btn, .fab, .icon-btn, .select, .sq, .mobile-verify-cta, .hamburger-btn, .mobile-close-btn"
     );
 
     const cleanupFns: Array<() => void> = [];
@@ -244,12 +268,54 @@ export default function Dashboard() {
 
   return (
     <div ref={rootRef} className="dashboard-app">
-      {/* Collapsible Left Navigation Sidebar */}
+      {/* Mobile Top Navigation Bar (Visible only on <= 900px) */}
+      <header className="mobile-top-bar">
+        <button
+          type="button"
+          className="hamburger-btn"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open sidebar menu"
+          title="Open menu"
+        >
+          <MenuIcon size={20} />
+        </button>
+
+        <div className="mobile-brand">
+          <img
+            src="/logo.png"
+            alt="NidhiSetu"
+            className="mobile-brand-logo"
+          />
+          <span className="mobile-brand-name">NidhiSetu</span>
+        </div>
+
+        <button
+          type="button"
+          className="mobile-verify-cta"
+          onClick={handleVerifyClick}
+          aria-label="Verify FDR"
+          title="Verify FDR"
+        >
+          <ShieldIcon size={14} />
+          <span>Verify</span>
+        </button>
+      </header>
+
+      {/* Mobile Drawer Backdrop Overlay */}
+      <div
+        className={`mobile-backdrop ${mobileOpen ? "open" : ""}`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Collapsible Left Navigation Sidebar (Desktop sticky, Mobile/Tablet slide-over drawer) */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         collapsed={collapsed}
         onToggleCollapse={handleToggleCollapse}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
       />
 
       {/* Main Dashboard Canvas */}

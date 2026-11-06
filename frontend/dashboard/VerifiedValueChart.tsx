@@ -49,16 +49,35 @@ export default function VerifiedValueChart({ isReady = true }: VerifiedValueChar
   const currentData = DATA[rangeKey];
   const n = currentData.v.length;
 
-  // Responsive chart width
+  // Responsive chart width with ResizeObserver
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        setChartWidth(containerRef.current.clientWidth);
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+
+    const updateWidth = () => {
+      if (el.clientWidth > 0) {
+        setChartWidth(el.clientWidth);
       }
     };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    updateWidth();
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) {
+          setChartWidth(Math.floor(w));
+        }
+      }
+    });
+
+    ro.observe(el);
+    window.addEventListener("resize", updateWidth);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateWidth);
+    };
   }, []);
 
   // Compute total sum and animate counter with GSAP directly to DOM text
@@ -213,7 +232,7 @@ export default function VerifiedValueChart({ isReady = true }: VerifiedValueChar
   // Tooltip positioning coordinates (centered directly over active point)
   const tipWidth = 145;
   const tipHeight = 55;
-  const tx = Math.min(chartWidth - tipWidth, Math.max(0, activePt.x - tipWidth / 2));
+  const tx = Math.min(chartWidth - tipWidth - 4, Math.max(4, activePt.x - tipWidth / 2));
   const ty = Math.max(-55, activePt.y - tipHeight - 12);
 
   // Pointer move handler with smooth tracker animation
@@ -472,11 +491,16 @@ export default function VerifiedValueChart({ isReady = true }: VerifiedValueChar
 
             {/* X-Axis Labels */}
             <div id="xl">
-              {points.map((p, i) => (
-                <span key={i} style={{ left: `${p.x}px` }}>
-                  {p.label}
-                </span>
-              ))}
+              {points.map((p, i) => {
+                const isNarrow = chartWidth < 460;
+                const show = !isNarrow || i % 2 === 0 || i === points.length - 1;
+                if (!show) return null;
+                return (
+                  <span key={i} style={{ left: `${p.x}px` }}>
+                    {p.label}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>

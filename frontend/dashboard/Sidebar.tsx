@@ -21,6 +21,7 @@ import {
   UpDownIcon,
   PlusIcon,
   CollapseIcon,
+  CloseIcon,
 } from "./Icons";
 
 interface SidebarProps {
@@ -28,6 +29,8 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 const WORKSPACES = [
@@ -42,10 +45,17 @@ export default function Sidebar({
   onSelectTab,
   collapsed,
   onToggleCollapse,
+  mobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
   const [selectedWs, setSelectedWs] = useState("Main Workspace");
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  const handleSelectTab = (tab: string) => {
+    onSelectTab(tab);
+    if (onCloseMobile) onCloseMobile();
+  };
 
   const navRef = useRef<HTMLElement>(null);
   const hlRef = useRef<HTMLSpanElement>(null);
@@ -261,7 +271,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="side" id="side">
+    <aside className={`side ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} id="side">
       <div className="side-in">
         {/* Brand Row */}
         <div className="brand-row">
@@ -276,9 +286,9 @@ export default function Sidebar({
           >
             <span className="logo">
               <img
-                src="/logo.jpeg"
+                src="/logo.png"
                 alt="NidhiSetu"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
             </span>
             <span className="brand-name hide-c">NidhiSetu</span>
@@ -286,7 +296,7 @@ export default function Sidebar({
 
           <button
             type="button"
-            className="icon-btn hide-c"
+            className="icon-btn hide-c desktop-collapse-btn"
             id="collapse"
             onClick={onToggleCollapse}
             aria-label="Collapse sidebar"
@@ -294,6 +304,18 @@ export default function Sidebar({
           >
             <CollapseIcon size={15} />
           </button>
+
+          {onCloseMobile && (
+            <button
+              type="button"
+              className="icon-btn mobile-close-btn"
+              onClick={onCloseMobile}
+              aria-label="Close sidebar"
+              title="Close sidebar"
+            >
+              <CloseIcon size={16} />
+            </button>
+          )}
         </div>
 
         {/* Workspace Selector Dropdown */}
@@ -388,7 +410,7 @@ export default function Sidebar({
           <button
             type="button"
             className={`nav-item ${activeTab === "home" ? "active" : ""}`}
-            onClick={() => onSelectTab("home")}
+            onClick={() => handleSelectTab("home")}
           >
             <HomeIcon size={18} />
             <span className="lbl">Home</span>
@@ -413,9 +435,9 @@ export default function Sidebar({
             </span>
           </button>
           <div className="sub">
-            <button type="button" onClick={() => onSelectTab("all-fdrs")}>All FDRs</button>
-            <button type="button" onClick={() => onSelectTab("upload-fdr")}>Upload FDR</button>
-            <button type="button" onClick={() => onSelectTab("archived")}>Archived</button>
+            <button type="button" onClick={() => handleSelectTab("all-fdrs")}>All FDRs</button>
+            <button type="button" onClick={() => handleSelectTab("upload-fdr")}>Upload FDR</button>
+            <button type="button" onClick={() => handleSelectTab("archived")}>Archived</button>
           </div>
 
           {/* Verifications Submenu */}
@@ -437,16 +459,16 @@ export default function Sidebar({
             </span>
           </button>
           <div className="sub">
-            <button type="button" onClick={() => onSelectTab("pending")}>Pending</button>
-            <button type="button" onClick={() => onSelectTab("verified")}>Verified</button>
-            <button type="button" onClick={() => onSelectTab("flagged")}>Flagged</button>
+            <button type="button" onClick={() => handleSelectTab("pending")}>Pending</button>
+            <button type="button" onClick={() => handleSelectTab("verified")}>Verified</button>
+            <button type="button" onClick={() => handleSelectTab("flagged")}>Flagged</button>
           </div>
 
           {/* Clients */}
           <button
             type="button"
             className={`nav-item ${activeTab === "clients" ? "active" : ""}`}
-            onClick={() => onSelectTab("clients")}
+            onClick={() => handleSelectTab("clients")}
           >
             <UsersIcon size={18} />
             <span className="lbl">Clients</span>
@@ -456,7 +478,7 @@ export default function Sidebar({
           <button
             type="button"
             className={`nav-item ${activeTab === "alerts" ? "active" : ""}`}
-            onClick={() => onSelectTab("alerts")}
+            onClick={() => handleSelectTab("alerts")}
           >
             <PinIcon size={18} />
             <span className="lbl">Alerts</span>
@@ -466,7 +488,7 @@ export default function Sidebar({
           <button
             type="button"
             className={`nav-item ${activeTab === "analytics" ? "active" : ""}`}
-            onClick={() => onSelectTab("analytics")}
+            onClick={() => handleSelectTab("analytics")}
           >
             <ChartIcon size={18} />
             <span className="lbl">Analytics</span>
@@ -504,7 +526,7 @@ export default function Sidebar({
             <button
               type="button"
               className={`nav-item ${activeTab === "bank-apis" ? "active" : ""}`}
-              onClick={() => onSelectTab("bank-apis")}
+              onClick={() => handleSelectTab("bank-apis")}
             >
               <GridIcon size={17} />
               <span className="lbl">Bank APIs</span>
@@ -543,7 +565,7 @@ export default function Sidebar({
             <button
               type="button"
               className={`nav-item ${activeTab === "web-portal" ? "active" : ""}`}
-              onClick={() => onSelectTab("web-portal")}
+              onClick={() => handleSelectTab("web-portal")}
             >
               <BagIcon size={17} />
               <span className="lbl">Web Portal</span>
@@ -554,7 +576,7 @@ export default function Sidebar({
             <button
               type="button"
               className={`nav-item ${activeTab === "verify-link" ? "active" : ""}`}
-              onClick={() => onSelectTab("verify-link")}
+              onClick={() => handleSelectTab("verify-link")}
             >
               <LinkIcon size={17} />
               <span className="lbl">Verify via Link</span>
