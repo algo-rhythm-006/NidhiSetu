@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Footer Atmosphere</title>
+<style>
+
+  :root{--font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--ink:#0A0A0B}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#fff;font-family:var(--font);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+  /* ===== ATMOSPHERE BACKGROUND (copy .atmo-bg + #atmo + the script) ===== */
+  .atmo-bg{position:absolute;inset:0;overflow:hidden;z-index:0;background:#fff}
+  .atmo-bg canvas{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .9s ease}
+  .atmo-bg canvas.ready{opacity:1}
+  /* static fallback shown until WebGL is ready, or if it is unavailable */
+  .atmo-bg::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#FFFFFF 20.0%,#F2F1FA 28.7%,#D4D3EE 37.5%,#A6A3DC 46.2%,#746FB9 55.0%,#453F8C 63.7%,#25224F 72.5%,#100F26 81.2%,#04040A 90.0%)}
+  @media (prefers-reduced-motion:reduce){.atmo-bg canvas{transition:none}}
+
+  /* ===== DEMO PAGE + FOOTER CONTENT (edit / delete in production) ===== */
+  .above{height:62vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:#6E6E73}
+  .above b{font-size:clamp(22px,3.5vw,34px);color:var(--ink);letter-spacing:-.03em}
+  .above span{font-size:14px}
+  .footer{position:relative;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between}
+  .ft-inner{position:relative;z-index:2;width:100%;max-width:1180px;margin:0 auto;padding:0 28px}
+  .cta{padding-top:clamp(70px,13vh,130px);text-align:center}
+  .cta h2{font-size:clamp(34px,6.2vw,72px);font-weight:700;letter-spacing:-.04em;line-height:1.03}
+  .cta h2 em{font-style:normal;font-weight:300;color:#6E6E73}
+  .cta p{margin-top:16px;font-size:clamp(15px,2vw,18px);color:#2E2E33;line-height:1.6}
+  .btns{margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{font:500 15px var(--font);padding:13px 24px;border-radius:999px;cursor:pointer;border:0;transition:transform .2s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.p{background:var(--ink);color:#fff;box-shadow:0 10px 28px rgba(10,10,11,.22)}
+  .btn.s{background:rgba(255,255,255,.85);color:var(--ink);border:1px solid #E5E5EA}
+  .bottom{position:relative;z-index:2}
+  .links{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:36px;color:#fff;padding-bottom:34px}
+  .brand{display:flex;flex-direction:column;gap:14px;max-width:290px}
+  .brand .logo{width:46px;height:46px;border-radius:12px;background:#000;display:grid;place-items:center;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px rgba(0,0,0,.35)}
+  .brand .logo svg{width:26px;height:26px}
+  .brand strong{font-size:20px;letter-spacing:-.02em}
+  .brand p{font-size:14px;line-height:1.6;color:rgba(255,255,255,.68)}
+  .col h4{font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.78);margin-bottom:16px}
+  .col a{display:block;font-size:15px;color:rgba(255,255,255,.86);text-decoration:none;padding:6px 0;transition:color .2s,transform .2s}
+  .col a:hover{color:#fff;transform:translateX(4px)}
+  .wordmark{text-align:center;line-height:.8;user-select:none;font-size:clamp(70px,19vw,270px);font-weight:700;letter-spacing:-.06em;
+    background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 85%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:-.06em}
+  .legal{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:18px 28px 26px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;color:rgba(255,255,255,.55)}
+  .rv{opacity:0;transform:translateY(24px)}
+  .in .rv{animation:up 1s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(.3s + var(--d,0)*.12s)}
+  @keyframes up{to{opacity:1;transform:none}}
+  @media (max-width:760px){.links{grid-template-columns:1fr 1fr}.brand{grid-column:1/-1;max-width:none}}
+  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;animation:none!important}}
+</style>
+</head>
+<body>
+
+<section class="above"><b>Page content above</b><span>Scroll down to see the footer</span></section>
+
+<footer class="footer">
+
+  <!-- ============ FOOTER BACKGROUND (copy from here) ============ -->
+  <div class="atmo-bg" aria-hidden="true"><canvas id="atmo" data-flip="1"></canvas></div>
+  <!-- ============ (copy to here, plus the <script> below) ============ -->
+
+  <div class="ft-inner cta">
+    <h2 class="rv" style="--d:0">Every FDR deserves <em>verification.</em></h2>
+    <p class="rv" style="--d:1">More than a glance. Verified, secure, and made to be trusted.</p>
+    <div class="btns rv" style="--d:2"><button class="btn p">Get started</button><button class="btn s">Talk to us</button></div>
+  </div>
+
+  <div class="bottom">
+    <div class="ft-inner links rv" style="--d:3">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 1254 1254" aria-hidden="true">
+            <path d="M627 188 C760 250 890 295 1016 335 L1016 520 C1016 745 935 885 745 985 Q685 1015 627 1030 Q569 1015 509 985 C319 885 238 745 238 520 L238 335 C364 295 494 250 627 188 Z" fill="none" stroke="#fff" stroke-width="86" stroke-linejoin="round"/>
+            <path d="M627 382 Q637 382 640 410 L655 600 L599 600 L614 410 Q617 382 627 382 Z" fill="#fff"/>
+            <line x1="438" y1="535" x2="598" y2="660" stroke="#fff" stroke-width="78" stroke-linecap="round"/>
+            <line x1="817" y1="535" x2="658" y2="660" stroke="#fff" stroke-width="78" stroke-linecap="round"/>
+            <path d="M572 690 L682 690 L660 800 Q627 850 594 800 Z" fill="#fff" stroke="#fff" stroke-width="30" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <strong>NidhiSetu</strong>
+        <p>Because every FDR deserves more than a glance, it deserves verification.</p>
+      </div>
+      <div class="col"><h4>Product</h4><a href="#">Features</a><a href="#">Verification</a><a href="#">Security</a><a href="#">Pricing</a></div>
+      <div class="col"><h4>Company</h4><a href="#">About</a><a href="#">Careers</a><a href="#">Blog</a><a href="#">Contact</a></div>
+      <div class="col"><h4>Legal</h4><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Compliance</a><a href="#">Cookies</a></div>
+    </div>
+    <div class="wordmark" aria-hidden="true">NidhiSetu</div>
+    <div class="legal"><span>© 2026 NidhiSetu. All rights reserved.</span><span>Verified. Secure. Trusted.</span></div>
+  </div>
+
+</footer>
+
+<script>
+(function () {
+  var cv = document.getElementById('atmo');
+  if (!cv) return;
+  var host = cv.parentElement;
+  var FLIP = parseFloat(cv.getAttribute('data-flip') || '0');   // 0 = dark top (hero), 1 = dark bottom (footer)
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  var gl = cv.getContext('webgl', { antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance' });
+  if (!gl) { host.classList.add('no-gl'); return; }
+
+  var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  var FS = [
+  '#ifdef GL_FRAGMENT_PRECISION_HIGH',
+  'precision highp float;',
+  '#else',
+  'precision mediump float;',
+  '#endif',
+  'uniform vec2 uRes; uniform float uTime, uFlip, uIntro; uniform vec2 uMouse;',
+  'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
+  'float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);',
+  '  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}',
+  'float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p=p*2.03+vec2(7.1,3.7);a*=.5;}return v;}',
+  // white -> misty lavender -> deep indigo -> near black
+  'vec3 ramp(float m){',
+  '  float k=m*8.;',
+  '  vec3 c=vec3(1.);',
+  '  c=mix(c,vec3(.949,.945,.980),clamp(k,0.,1.));',
+  '  c=mix(c,vec3(.831,.827,.933),clamp(k-1.,0.,1.));',
+  '  c=mix(c,vec3(.651,.639,.863),clamp(k-2.,0.,1.));',
+  '  c=mix(c,vec3(.455,.435,.725),clamp(k-3.,0.,1.));',
+  '  c=mix(c,vec3(.271,.247,.549),clamp(k-4.,0.,1.));',
+  '  c=mix(c,vec3(.145,.133,.310),clamp(k-5.,0.,1.));',
+  '  c=mix(c,vec3(.063,.059,.149),clamp(k-6.,0.,1.));',
+  '  c=mix(c,vec3(.016,.016,.039),clamp(k-7.,0.,1.));',
+  '  return c;}',
+  'void main(){',
+  '  vec2 uv=gl_FragCoord.xy/uRes;',
+  '  float w=mix(uv.y,1.-uv.y,uFlip);',                  // 0 at the white edge, 1 at the dark edge
+  '  float x=(uv.x-.5)*2.;',
+  '  float t=uTime*.05;',
+  '  float a0=mix(.28,.30,uFlip);',
+  '  float arch=1.-min(x*x,1.);',                        // 1 in the centre, 0 at the sides
+  // 1) broad curved horizon: the dark reaches further toward the white in the centre
+  '  float base=w+.17*arch+uMouse.y*-.02;',
+  '  float m0=clamp((base-a0)/.72,0.,1.);',
+  // 2) drifting mist that only disturbs the transition zone, never the pure white/black ends
+  '  float band=smoothstep(.02,.32,m0)*(1.-smoothstep(.62,1.,m0));',
+  '  vec2 q=vec2(x*1.05+t*1.6,w*2.1-t);',
+  '  vec2 wq=vec2(fbm(q+vec2(0.,t)),fbm(q+vec2(5.2,1.3)-t));',
+  '  float f=fbm(q*1.15+wq*1.9);',
+  '  float m=clamp((base+(f-.5)*.34*band-a0)/.72,0.,1.);',
+  '  m=mix(m,m*m*(3.-2.*m),.4);',
+  '  m=clamp(m-(1.-uIntro)*.5,0.,1.);',                  // rises into place on load
+  '  vec3 c=ramp(m);',
+  // 3) pale wisps of haze floating through the dark part
+  '  float wisp=smoothstep(.50,.82,f)*band;',
+  '  c=mix(c,vec3(.78,.77,.97),wisp*.20);',
+  // 4) soft luminous core in the middle of the dome
+  '  float bl=exp(-(pow((x-uMouse.x*.25)/.6,2.)+pow((w-.40)/.15,2.)));',
+  '  c+=vec3(.30,.27,.62)*bl*.34*smoothstep(.12,.45,m)*(1.-smoothstep(.55,.9,m));',
+  // 5) dark vignette in the outer corners
+  '  c*=1.-.40*smoothstep(.50,1.,abs(x))*smoothstep(.25,.85,m);',
+  // 6) guaranteed pure white at the white edge
+  '  c=mix(vec3(1.),c,smoothstep(0.,.05,m));',
+  '  c+=(hash(gl_FragCoord.xy)-.5)*(2.4/255.);',
+  '  gl_FragColor=vec4(clamp(c,0.,1.),1.);',
+  '}'
+  ].join('\n');
+
+  function sh(type, src) {
+    var o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o);
+    if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn(gl.getShaderInfoLog(o)); return null; }
+    return o;
+  }
+  var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
+  if (!vs || !fs) { host.classList.add('no-gl'); return; }
+  var pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { host.classList.add('no-gl'); return; }
+  gl.useProgram(pr);
+
+  var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);   // one big triangle
+  var loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  var uRes = gl.getUniformLocation(pr, 'uRes'), uTime = gl.getUniformLocation(pr, 'uTime'),
+      uFlip = gl.getUniformLocation(pr, 'uFlip'), uIntro = gl.getUniformLocation(pr, 'uIntro'),
+      uMouse = gl.getUniformLocation(pr, 'uMouse');
+  gl.uniform1f(uFlip, FLIP);
+
+  // Render at reduced resolution: smooth gradients lose nothing, GPU load drops a lot
+  var scale = Math.min(window.devicePixelRatio || 1, 1) * 0.6;
+  function resize() {
+    var w = Math.max(2, Math.round(host.clientWidth * scale)), h = Math.max(2, Math.round(host.clientHeight * scale));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); gl.uniform2f(uRes, w, h); }
+  }
+  resize();
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(host); else addEventListener('resize', resize);
+
+  var tx = 0, ty = 0, mx = 0, my = 0;
+  if (!reduce) addEventListener('pointermove', function (e) { tx = e.clientX / innerWidth - .5; ty = e.clientY / innerHeight - .5; }, { passive:true });
+
+  var t0 = performance.now(), last = t0, introStart = null, visible = true, raf = 0, frames = 0, acc = 0;
+  function ease(k) { k = Math.max(0, Math.min(1, k)); return 1 - Math.pow(1 - k, 3); }
+
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    var dt = now - last; last = now;
+    // adaptive quality: if frames are slow, quietly lower the render resolution
+    if (dt < 250) { acc += dt; frames++; }
+    if (frames === 45) { if (acc / frames > 24 && scale > .3) { scale *= .75; resize(); } frames = 0; acc = 0; }
+    mx += (tx - mx) * .035; my += (ty - my) * .035;
+    if (introStart === null) introStart = now;
+    var intro = reduce ? 1 : ease((now - introStart) / 2600);
+    gl.uniform1f(uTime, reduce ? 4 : (now - t0) / 1000);
+    gl.uniform1f(uIntro, intro);
+    gl.uniform2f(uMouse, mx, my);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!cv.classList.contains('ready')) cv.classList.add('ready');
+  }
+  function start() { if (!raf && visible && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+  // only animate while on screen and while the tab is active
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      visible = es[0].isIntersecting;
+      if (visible) { host.parentElement.classList.add('in'); start(); } else stop();
+    }, { threshold: 0.05 }).observe(host);
+  } else { host.parentElement.classList.add('in'); start(); }
+  document.addEventListener('visibilitychange', function () { document.hidden ? stop() : start(); });
+})();
+</script>
+</body>
+</html>
