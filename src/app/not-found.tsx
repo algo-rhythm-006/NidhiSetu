@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ShieldCheckIcon } from "../../landing-page/pages/icons";
+import { ShieldCheckIcon } from "@/components/landing/icons";
 
 export default function NotFound() {
   return (

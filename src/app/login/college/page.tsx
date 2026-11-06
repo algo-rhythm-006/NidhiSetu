@@ -1,4 +1,4 @@
-import CollegeLogin from "@landing/login/college/login";
+import CollegeLogin from "@/components/auth/CollegeLogin";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

@@ -19,9 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@landing/*": ["./landing-page/*"],
-      "@frontend/*": ["./frontend/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [

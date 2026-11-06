@@ -15,30 +15,43 @@ export function PageLoader({
   text = "Authorizing Sentinel Session...",
   subtext = "AICTE Cryptographic FDR Ledger Synchronization",
   onFinish,
-  minDuration = 1100,
+  minDuration = 850,
 }: PageLoaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const onFinishRef = useRef(onFinish);
 
   useEffect(() => {
+    onFinishRef.current = onFinish;
+  });
+
+  useEffect(() => {
+    if (contentRef.current) {
+      gsap.fromTo(
+        contentRef.current,
+        { opacity: 0, scale: 0.95, y: 8 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: "power2.out" }
+      );
+    }
+
     const timer = setTimeout(() => {
       if (containerRef.current) {
         gsap.to(containerRef.current, {
           opacity: 0,
           scale: 1.02,
-          duration: 0.45,
+          duration: 0.35,
           ease: "power2.inOut",
           onComplete: () => {
-            if (onFinish) onFinish();
+            onFinishRef.current?.();
           },
         });
-      } else if (onFinish) {
-        onFinish();
+      } else {
+        onFinishRef.current?.();
       }
     }, minDuration);
 
     return () => clearTimeout(timer);
-  }, [minDuration, onFinish]);
+  }, [minDuration]);
 
   return (
     <div

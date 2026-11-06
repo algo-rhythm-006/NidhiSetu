@@ -11,6 +11,7 @@ interface PillNavProps {
   items: NavItem[];
   activeItem?: string;
   className?: string;
+  theme?: "dark" | "light";
   onItemClick?: (item: NavItem) => void;
 }
 
@@ -18,6 +19,7 @@ export default function PillNav({
   items,
   activeItem,
   className = "",
+  theme = "dark",
   onItemClick,
 }: PillNavProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -38,6 +40,7 @@ export default function PillNav({
           -webkit-backdrop-filter: blur(24px);
           border: 1px solid rgba(255, 255, 255, 0.16);
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+          transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
         .pill-nav-link {
           position: relative;
@@ -48,7 +51,7 @@ export default function PillNav({
           color: rgba(255, 255, 255, 0.72);
           text-decoration: none;
           border-radius: 9999px;
-          transition: color 0.2s ease;
+          transition: color 0.25s ease;
           cursor: pointer;
           white-space: nowrap;
           z-index: 2;
@@ -75,9 +78,34 @@ export default function PillNav({
           border: 1px solid rgba(255, 255, 255, 0.12);
           box-shadow: none;
         }
+
+        /* ── Light Theme: Self-contained floating pill capsule only ── */
+        .pill-nav-container.theme-light {
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          box-shadow: 0 6px 24px -2px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        }
+        .pill-nav-container.theme-light .pill-nav-link {
+          color: rgba(10, 10, 11, 0.72);
+        }
+        .pill-nav-container.theme-light .pill-nav-link:hover,
+        .pill-nav-container.theme-light .pill-nav-link.active {
+          color: #0A0A0B;
+        }
+        .pill-nav-container.theme-light .pill-bg-indicator.active {
+          background: rgba(0, 0, 0, 0.06);
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+        .pill-nav-container.theme-light .pill-bg-indicator.hovered {
+          background: rgba(0, 0, 0, 0.03);
+          border: 1px solid rgba(0, 0, 0, 0.04);
+        }
       `}</style>
       <nav
-        className={`pill-nav-container ${className}`}
+        className={`pill-nav-container ${theme === "light" ? "theme-light" : ""} ${className}`}
         aria-label="Primary Navigation"
         suppressHydrationWarning
       >
@@ -108,7 +136,6 @@ export default function PillNav({
                 <span
                   className={`pill-bg-indicator ${isActive ? "active" : "hovered"}`}
                   aria-hidden="true"
-                  suppressHydrationWarning
                 />
               )}
               {item.label}

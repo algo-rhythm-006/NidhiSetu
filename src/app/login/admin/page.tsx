@@ -1,4 +1,4 @@
-import AdminLogin from "@landing/login/admin/login";
+import AdminLogin from "@/components/auth/AdminLogin";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

@@ -1,4 +1,4 @@
-import OfficialLogin from "@landing/login/official/login";
+import OfficialLogin from "@/components/auth/OfficialLogin";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

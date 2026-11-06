@@ -1,12 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { Hero, FirstBento, SecondBento, Faq, Footer } from "@landing/pages";
+import { Loader, Hero, FirstBento, SecondBento, Faq, Footer } from "@/components/landing";
 import SlowManifestoReveal from "@/components/ui/scroll-reveal";
-
-const Loader = dynamic(() => import("@landing/pages").then((mod) => mod.Loader), {
-  ssr: false,
-});
 
 export default function Home() {
   return (

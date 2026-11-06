@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import Dashboard from "@frontend/dashboard/Dashboard";
+import Dashboard from "@/components/dashboard/Dashboard";
 
 export const metadata: Metadata = {
   title: "NidhiSetu Dashboard — FDR Verification & Regulatory Oversight",
