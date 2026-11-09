@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nidhi-Setu · AI Pipeline Tester</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'] },
+          colors: {
+            brand: { 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' },
+            surface: { 900: '#0f1117', 800: '#161b27', 700: '#1e2638', 600: '#252f42' },
+          },
+          animation: {
+            'spin-slow': 'spin 1.5s linear infinite',
+            'pulse-fast': 'pulse 0.9s cubic-bezier(0.4,0,0.6,1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0f1117; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #161b27; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+    /* Token input glow */
+    .token-input:focus { box-shadow: 0 0 0 2px #6366f1; outline: none; }
+
+    /* Code blocks */
+    .json-block { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+                  line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+
+    /* SQL highlight */
+    .sql-block { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+                 line-height: 1.7; }
+
+    /* Status badges */
+    .badge-clean     { background:#052e16; color:#86efac; border:1px solid #166534; }
+    .badge-suspicious{ background:#422006; color:#fed7aa; border:1px solid #9a3412; }
+    .badge-tampered  { background:#450a0a; color:#fca5a5; border:1px solid #991b1b; }
+    .badge-failed    { background:#1c1917; color:#a8a29e; border:1px solid #44403c; }
+    .badge-success   { background:#052e16; color:#86efac; border:1px solid #166534; }
+    .badge-partial   { background:#2d2004; color:#fde68a; border:1px solid #92400e; }
+
+    /* Bounding box overlay container */
+    .bbox-wrapper { position: relative; display: inline-block; }
+    .bbox-rect {
+      position: absolute;
+      border: 2px solid #ef4444;
+      background: rgba(239,68,68,0.08);
+      pointer-events: none;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .bbox-label {
+      position: absolute;
+      top: -22px; left: 0;
+      background: #ef4444;
+      color: white;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 1px 5px;
+      border-radius: 3px 3px 3px 0;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Upload drop zone */
+    .dropzone { transition: border-color 0.2s, background-color 0.2s; }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: #6366f1; background: rgba(99,102,241,0.05);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid rgba(99,102,241,0.25);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Progress bar */
+    .progress-bar { animation: progress-indeterminate 1.4s ease infinite; }
+    @keyframes progress-indeterminate {
+      0%   { transform: translateX(-100%) scaleX(0.3); }
+      50%  { transform: translateX(0%) scaleX(0.7); }
+      100% { transform: translateX(100%) scaleX(0.3); }
+    }
+
+    /* Module cards */
+    .module-card { backdrop-filter: blur(8px); }
+
+    /* SQL keyword coloring */
+    .kw-select   { color: #c084fc; }
+    .kw-from     { color: #c084fc; }
+    .kw-where    { color: #c084fc; }
+    .kw-and      { color: #c084fc; }
+    .kw-or       { color: #c084fc; }
+    .kw-limit    { color: #c084fc; }
+    .kw-order    { color: #c084fc; }
+    .kw-between  { color: #c084fc; }
+    .kw-by       { color: #c084fc; }
+    .kw-string   { color: #86efac; }
+    .kw-number   { color: #fbbf24; }
+    .kw-func     { color: #60a5fa; }
+
+    /* Math verification flag */
+    .math-pass { border-left: 3px solid #22c55e; padding-left: 10px; }
+    .math-fail { border-left: 3px solid #ef4444; padding-left: 10px; }
+    .math-skip { border-left: 3px solid #6b7280; padding-left: 10px; }
+
+    /* Score meter */
+    .score-bar-bg { background: #1e2638; border-radius: 99px; overflow: hidden; height: 8px; }
+    .score-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  </style>
+</head>
+<body class="min-h-screen text-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════
+     FIXED HEADER
+═══════════════════════════════════════════════════════════ -->
+<header class="fixed top-0 left-0 right-0 z-50 border-b border-slate-700/60"
+        style="background:rgba(15,17,23,0.95);backdrop-filter:blur(12px)">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 mr-auto">
+      <div class="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold text-sm">
+        NS
+      </div>
+      <div>
+        <p class="font-semibold text-slate-100 leading-none text-sm">Nidhi-Setu</p>
+        <p class="text-xs text-slate-500 leading-none mt-0.5">AI Pipeline Test Rig · SIH 2026</p>
+      </div>
+    </div>
+
+    <!-- Base URL -->
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-slate-400 font-medium whitespace-nowrap">API URL</label>
+      <input id="baseUrl" type="text" value="http://localhost:8000"
+        class="token-input w-52 px-3 py-1.5 text-xs rounded-lg bg-surface-700 border border-slate-600
+               text-slate-200 placeholder-slate-500 font-mono" />
+    </div>
+
+    <!-- Token -->
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-slate-400 font-medium whitespace-nowrap">X-Internal-Token</label>
+      <div class="relative">
+        <input id="apiToken" type="password" value="change-me-before-deploying-a-very-long-secret-key" placeholder="your-shared-secret"
+          class="token-input w-56 px-3 py-1.5 text-xs rounded-lg bg-surface-700 border border-slate-600
+                 text-slate-200 placeholder-slate-500 font-mono pr-8" />
+        <button onclick="toggleTokenVisibility()"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs">
+          👁
+        </button>
+      </div>
+    </div>
+
+    <!-- Health check -->
+    <button onclick="checkHealth()"
+      class="px-3 py-1.5 text-xs rounded-lg bg-surface-700 border border-slate-600
+             hover:border-brand-500 text-slate-300 hover:text-white transition-all font-medium flex items-center gap-1.5">
+      <span id="healthDot" class="w-2 h-2 rounded-full bg-slate-500 inline-block"></span>
+      Health
+    </button>
+
+  </div>
+  <!-- Indeterminate progress bar -->
+  <div id="globalProgress" class="h-0.5 bg-surface-700 overflow-hidden" style="display:none">
+    <div class="progress-bar h-full w-1/3 bg-brand-500"></div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════════════ -->
+<main class="max-w-7xl mx-auto px-4 pt-24 pb-16 space-y-8">
+
+  <!-- ─── TOAST ─── -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden max-w-sm"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE A — FDR EXTRACTION + MATH VERIFICATION
+  ═══════════════════════════════════════════════════════ -->
+  <section class="module-card rounded-2xl border border-slate-700/60 overflow-hidden"
+           style="background:#161b27">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-700/40 flex items-center gap-3">
+      <span class="w-7 h-7 rounded-lg bg-violet-900/60 border border-violet-700/50 flex items-center
+                   justify-center text-violet-300 text-xs font-bold">A</span>
+      <div>
+        <h2 class="font-semibold text-slate-100 text-sm">Visual Extraction + Math Verification</h2>
+        <p class="text-xs text-slate-500 font-mono">POST /api/v1/fdr/analyze</p>
+      </div>
+      <span class="ml-auto text-xs px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300
+                   border border-violet-800/50">Qwen2.5-VL-3B · 4-bit · GPU</span>
+    </div>
+
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left: Input -->
+      <div class="space-y-4">
+        <!-- Drop zone -->
+        <div id="dropzoneA" class="dropzone border-2 border-dashed border-slate-600 rounded-xl p-8
+                                    text-center cursor-pointer relative"
+             onclick="document.getElementById('fileA').click()"
+             ondragover="handleDragOver(event,'dropzoneA')"
+             ondragleave="handleDragLeave(event,'dropzoneA')"
+             ondrop="handleDrop(event,'fileA','dropzoneA','previewA')">
+          <input type="file" id="fileA" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp,.webp"
+                 class="hidden" onchange="handleFileSelect(this,'previewA','dropzoneA')" />
+          <div id="previewA" class="hidden mb-3">
+            <img id="previewImgA" class="max-h-40 mx-auto rounded-lg object-contain" />
+            <p id="previewNameA" class="text-xs text-slate-400 mt-2 font-mono"></p>
+          </div>
+          <div id="dropPlaceholderA" class="space-y-2">
+            <div class="text-3xl">📄</div>
+            <p class="text-sm font-medium text-slate-300">Drop FDR image or PDF here</p>
+            <p class="text-xs text-slate-500">JPEG · PNG · PDF · TIFF · BMP · WEBP</p>
+          </div>
+        </div>
+
+        <!-- Document ID -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400">Document ID</label>
+          <input id="docIdA" type="text" value="FDR-2025-TEST-001"
+            class="w-full px-3 py-2 text-sm rounded-lg bg-surface-700 border border-slate-600
+                   text-slate-200 font-mono focus:border-brand-500 focus:outline-none" />
+        </div>
+
+        <!-- Requested by -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400">Requested By</label>
+          <input id="requestedByA" type="text" value="tester@aicte.gov.in"
+            class="w-full px-3 py-2 text-sm rounded-lg bg-surface-700 border border-slate-600
+                   text-slate-200 font-mono focus:border-brand-500 focus:outline-none" />
+        </div>
+
+        <!-- Submit -->
+        <button onclick="runAnalyze()"
+          class="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold
+                 text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          id="btnA">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Run Visual Extraction
+        </button>
+
+        <!-- Loading state A -->
+        <div id="loadingA" class="hidden">
+          <div class="rounded-xl border border-violet-800/40 bg-violet-900/10 p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="spinner"></div>
+              <div>
+                <p class="text-sm font-semibold text-violet-300" id="loadingTextA">Acquiring GPU lock…</p>
+                <p class="text-xs text-slate-500">Model swap may take 15–30s on RTX 2050</p>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs text-slate-500">
+                <span id="stepA">Loading Qwen2.5-VL-3B into VRAM…</span>
+              </div>
+              <div class="score-bar-bg">
+                <div class="progress-bar score-bar-fill bg-violet-500" style="width:60%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Response -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Response</p>
+          <div id="statusBadgeA"></div>
+        </div>
+
+        <!-- Math verification card (shown when response arrives) -->
+        <div id="mathCard" class="hidden rounded-xl border p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-300 uppercase tracking-wider">⚖ Math Verification</p>
+            <span id="mathBadge" class="text-xs px-2 py-0.5 rounded-full"></span>
+          </div>
+          <div id="mathDetails" class="space-y-1 text-xs font-mono"></div>
+        </div>
+
+        <!-- Confidence meter -->
+        <div id="confidenceCard" class="hidden rounded-xl border border-slate-700/40 bg-surface-700/30 p-4">
+          <div class="flex justify-between text-xs mb-2">
+            <span class="text-slate-400 font-semibold">Extraction Confidence</span>
+            <span id="confidenceScore" class="text-slate-200 font-mono font-bold"></span>
+          </div>
+          <div class="score-bar-bg">
+            <div id="confidenceBar" class="score-bar-fill" style="width:0%"></div>
+          </div>
+          <p id="lowConfFields" class="text-xs text-amber-400 mt-2 font-mono"></p>
+        </div>
+
+        <!-- JSON output -->
+        <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 overflow-auto max-h-80">
+          <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/40">
+            <span class="text-xs text-slate-500 font-mono">extracted_fields</span>
+            <button onclick="copyJson('jsonA')"
+              class="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-0.5
+                     rounded border border-slate-700 hover:border-slate-500">copy</button>
+          </div>
+          <pre id="jsonA" class="json-block text-slate-300 p-4">
+<span class="text-slate-600">// Upload an FDR document and click Run Visual Extraction</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE B — VISUAL FORENSICS (ELA)
+  ═══════════════════════════════════════════════════════ -->
+  <section class="module-card rounded-2xl border border-slate-700/60 overflow-hidden"
+           style="background:#161b27">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-700/40 flex items-center gap-3">
+      <span class="w-7 h-7 rounded-lg bg-red-900/60 border border-red-700/50 flex items-center
+                   justify-center text-red-300 text-xs font-bold">B</span>
+      <div>
+        <h2 class="font-semibold text-slate-100 text-sm">Visual Forensics · Error Level Analysis</h2>
+        <p class="text-xs text-slate-500 font-mono">POST /api/v1/fdr/forensics</p>
+      </div>
+      <span class="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300
+                   border border-emerald-800/50">OpenCV · CPU · No GPU lock</span>
+    </div>
+
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left: Input -->
+      <div class="space-y-4">
+        <div id="dropzoneB" class="dropzone border-2 border-dashed border-slate-600 rounded-xl p-8
+                                    text-center cursor-pointer"
+             onclick="document.getElementById('fileB').click()"
+             ondragover="handleDragOver(event,'dropzoneB')"
+             ondragleave="handleDragLeave(event,'dropzoneB')"
+             ondrop="handleDrop(event,'fileB','dropzoneB',null)">
+          <input type="file" id="fileB" accept=".jpg,.jpeg,.png,.bmp,.webp,.tiff"
+                 class="hidden" onchange="handleFileSelect(this,null,'dropzoneB')" />
+          <div id="dropPlaceholderB" class="space-y-2">
+            <div class="text-3xl">🔬</div>
+            <p class="text-sm font-medium text-slate-300">Drop FDR image for forensics</p>
+            <p class="text-xs text-slate-500">JPEG · PNG · BMP (no PDF — ELA requires raster)</p>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400">Document ID</label>
+          <input id="docIdB" type="text" value="FDR-2025-FORENSICS-001"
+            class="w-full px-3 py-2 text-sm rounded-lg bg-surface-700 border border-slate-600
+                   text-slate-200 font-mono focus:border-brand-500 focus:outline-none" />
+        </div>
+
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" id="returnElaImage" checked
+            class="w-4 h-4 rounded border-slate-600 bg-surface-700 text-brand-500
+                   focus:ring-brand-500 focus:ring-offset-0" />
+          <span class="text-xs text-slate-300">Return ELA heatmap (base64 PNG for overlay)</span>
+        </label>
+
+        <button onclick="runForensics()"
+          class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold
+                 text-sm transition-all flex items-center justify-center gap-2"
+          id="btnB">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955
+                     11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824
+                     10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          Run ELA Forensics
+        </button>
+
+        <!-- Loading state B -->
+        <div id="loadingB" class="hidden">
+          <div class="rounded-xl border border-red-800/40 bg-red-900/10 p-4">
+            <div class="flex items-center gap-3">
+              <div class="spinner" style="border-top-color:#ef4444;border-color:rgba(239,68,68,0.25)"></div>
+              <div>
+                <p class="text-sm font-semibold text-red-300">Running ELA Pipeline…</p>
+                <p class="text-xs text-slate-500">CPU-only · typically &lt;500ms</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tamper score meter -->
+        <div id="tamperMeter" class="hidden rounded-xl border border-slate-700/40 bg-surface-700/30 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tamper Probability</span>
+            <span id="tamperStatus" class="text-xs px-2 py-0.5 rounded-full"></span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="score-bar-bg flex-1">
+              <div id="tamperBar" class="score-bar-fill" style="width:0%"></div>
+            </div>
+            <span id="tamperScore" class="text-lg font-bold font-mono w-16 text-right"></span>
+          </div>
+          <!-- Flagged regions list -->
+          <div id="regionsList" class="space-y-1.5"></div>
+        </div>
+      </div>
+
+      <!-- Right: Image overlay canvas -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Image Preview + Bounding Boxes</p>
+          <div class="flex gap-2">
+            <button id="toggleElaBtn" onclick="toggleElaOverlay()" class="hidden text-xs px-2 py-0.5
+              rounded border border-slate-600 hover:border-slate-400 text-slate-400 hover:text-slate-200
+              transition-colors">Toggle ELA</button>
+          </div>
+        </div>
+
+        <!-- Image + overlay container -->
+        <div class="rounded-xl border border-slate-700/40 bg-slate-900/50 overflow-hidden min-h-48
+                    flex items-center justify-center p-4">
+          <div id="noImageB" class="text-center text-slate-600 text-sm">
+            <div class="text-4xl mb-2">🖼</div>
+            <p>Upload an image to see forensics overlay</p>
+          </div>
+          <!-- bbox-wrapper injected by JS -->
+          <div id="imageContainerB" class="hidden w-full flex justify-center"></div>
+        </div>
+
+        <!-- ELA heatmap -->
+        <div id="elaContainer" class="hidden">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">ELA Heatmap
+            <span class="text-slate-600 normal-case font-normal">(bright = suspicious)</span></p>
+          <div class="rounded-xl border border-slate-700/40 overflow-hidden">
+            <img id="elaHeatmap" class="w-full object-contain max-h-48 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE C — NL2SQL COPILOT
+  ═══════════════════════════════════════════════════════ -->
+  <section class="module-card rounded-2xl border border-slate-700/60 overflow-hidden"
+           style="background:#161b27">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-700/40 flex items-center gap-3">
+      <span class="w-7 h-7 rounded-lg bg-sky-900/60 border border-sky-700/50 flex items-center
+                   justify-center text-sky-300 text-xs font-bold">C</span>
+      <div>
+        <h2 class="font-semibold text-slate-100 text-sm">NL2SQL · Administrative Copilot</h2>
+        <p class="text-xs text-slate-500 font-mono">POST /api/v1/search/nl2sql</p>
+      </div>
+      <span class="ml-auto text-xs px-2 py-0.5 rounded-full bg-sky-900/40 text-sky-300
+                   border border-sky-800/50">Llama 3.2 3B · Q4_K_M · Ollama</span>
+    </div>
+
+    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left: Input -->
+      <div class="space-y-4">
+        <!-- Query presets -->
+        <div>
+          <p class="text-xs font-medium text-slate-400 mb-2">Quick Presets</p>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setQuery(this)"
+              data-query="Show me all FDRs expiring within the next 30 days in West Bengal"
+              class="preset-btn text-xs px-2.5 py-1 rounded-lg bg-surface-600 border border-slate-600
+                     hover:border-sky-600 text-slate-300 hover:text-sky-300 transition-all">
+              Expiring in WB
+            </button>
+            <button onclick="setQuery(this)"
+              data-query="Find all FDRs from State Bank of India with principal above 10 lakhs"
+              class="preset-btn text-xs px-2.5 py-1 rounded-lg bg-surface-600 border border-slate-600
+                     hover:border-sky-600 text-slate-300 hover:text-sky-300 transition-all">
+              SBI High-Value
+            </button>
+            <button onclick="setQuery(this)"
+              data-query="List FDRs flagged for math verification failure in the last month"
+              class="preset-btn text-xs px-2.5 py-1 rounded-lg bg-surface-600 border border-slate-600
+                     hover:border-sky-600 text-slate-300 hover:text-sky-300 transition-all">
+              Math Failures
+            </button>
+            <button onclick="setQuery(this)"
+              data-query="Count active FDRs grouped by state"
+              class="preset-btn text-xs px-2.5 py-1 rounded-lg bg-surface-600 border border-slate-600
+                     hover:border-sky-600 text-slate-300 hover:text-sky-300 transition-all">
+              By State
+            </button>
+          </div>
+        </div>
+
+        <!-- NL query input -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400">Natural Language Query</label>
+          <textarea id="nlQuery" rows="3"
+            placeholder="e.g. Show me all FDRs expiring within the next 30 days in West Bengal"
+            class="w-full px-3 py-2 text-sm rounded-lg bg-surface-700 border border-slate-600
+                   text-slate-200 font-mono focus:border-brand-500 focus:outline-none resize-none
+                   placeholder-slate-600"></textarea>
+        </div>
+
+        <!-- Schema context -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-slate-400">PostgreSQL Schema Context</label>
+            <button onclick="resetSchema()" class="text-xs text-slate-500 hover:text-slate-300">reset</button>
+          </div>
+          <textarea id="schemaCtx" rows="6"
+            class="w-full px-3 py-2 text-xs rounded-lg bg-surface-700 border border-slate-600
+                   text-slate-300 font-mono focus:border-brand-500 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex-1 space-y-1.5">
+            <label class="text-xs font-medium text-slate-400">Max Rows Hint</label>
+            <input id="maxRows" type="number" value="50" min="1" max="1000"
+              class="w-full px-3 py-2 text-sm rounded-lg bg-surface-700 border border-slate-600
+                     text-slate-200 font-mono focus:border-brand-500 focus:outline-none" />
+          </div>
+          <button onclick="runNl2sql()"
+            class="flex-1 mt-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold
+                   text-sm transition-all flex items-center justify-center gap-2"
+            id="btnC">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Generate SQL
+          </button>
+        </div>
+
+        <!-- Loading state C -->
+        <div id="loadingC" class="hidden">
+          <div class="rounded-xl border border-sky-800/40 bg-sky-900/10 p-4">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="spinner" style="border-top-color:#38bdf8;border-color:rgba(56,189,248,0.25)"></div>
+              <div>
+                <p class="text-sm font-semibold text-sky-300" id="loadingTextC">Acquiring GPU lock…</p>
+                <p class="text-xs text-slate-500">Evicting Qwen from VRAM if loaded</p>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="score-bar-bg">
+                <div class="progress-bar score-bar-fill bg-sky-500" style="width:60%"></div>
+              </div>
+              <p class="text-xs text-slate-600" id="stepC">Sending query to Ollama (Llama 3.2 3B)…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: SQL output -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Generated SQL</p>
+          <div id="safetyBadge" class="hidden">
+            <span id="safetyText" class="text-xs px-2 py-0.5 rounded-full"></span>
+          </div>
+        </div>
+
+        <!-- SQL code block -->
+        <div class="rounded-xl border border-slate-700/40 bg-slate-900/80 overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/40
+                      bg-slate-900/50">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500 font-mono">postgresql</span>
+              <span id="sqlModelBadge" class="hidden text-xs px-1.5 py-0.5 rounded bg-surface-600
+                     text-slate-400 font-mono border border-slate-700"></span>
+            </div>
+            <button onclick="copyText('sqlOutput')"
+              class="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-0.5
+                     rounded border border-slate-700 hover:border-slate-500">copy</button>
+          </div>
+          <div class="p-4 min-h-24">
+            <pre id="sqlOutput" class="sql-block text-slate-600">-- Run a query to see the generated SQL here</pre>
+          </div>
+        </div>
+
+        <!-- Explanation -->
+        <div id="explanationCard" class="hidden rounded-xl border border-slate-700/40
+                                          bg-surface-700/30 p-4">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            Plain-English Explanation
+          </p>
+          <p id="explanationText" class="text-sm text-slate-300 leading-relaxed"></p>
+        </div>
+
+        <!-- Safety audit -->
+        <div id="safetyAuditCard" class="hidden rounded-xl border border-slate-700/40
+                                          bg-surface-700/30 p-4">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Safety Audit</p>
+          <div id="safetyChecks" class="grid grid-cols-2 gap-1.5"></div>
+        </div>
+
+        <!-- Timing -->
+        <div id="timingC" class="hidden text-xs text-slate-600 font-mono text-right"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const state = {
+  elaImageBase64: null,
+  originalImageB: null,          // Data URL of original image for Module B
+  elaOverlayActive: false,
+  bboxData: [],
+};
+
+// ─── DEFAULT SCHEMA ───────────────────────────────────────────────────────────
+const DEFAULT_SCHEMA = `CREATE TABLE fdrs (
+  id           UUID PRIMARY KEY,
+  bank_name    TEXT NOT NULL,
+  branch_name  TEXT,
+  state        TEXT NOT NULL,
+  customer_name TEXT NOT NULL,
+  principal    NUMERIC(15,2) NOT NULL,
+  interest_rate NUMERIC(5,3) NOT NULL,
+  issue_date   DATE NOT NULL,
+  maturity_date DATE NOT NULL,
+  status       TEXT DEFAULT 'active',
+  math_verified BOOLEAN DEFAULT FALSE,
+  tamper_score NUMERIC(4,3),
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE institutions (
+  id    UUID PRIMARY KEY,
+  name  TEXT NOT NULL,
+  state TEXT NOT NULL
+);`;
+
+document.getElementById('schemaCtx').value = DEFAULT_SCHEMA;
+
+// ─── UTILITY: API CALL ────────────────────────────────────────────────────────
+function getBaseUrl() { return document.getElementById('baseUrl').value.replace(/\/$/, ''); }
+function getToken()   { return document.getElementById('apiToken').value; }
+
+async function apiCall(method, path, body, isFormData = false) {
+  const headers = { 'X-Internal-Token': getToken() };
+  if (!isFormData) headers['Content-Type'] = 'application/json';
+
+  const opts = { method, headers };
+  if (body) opts.body = isFormData ? body : JSON.stringify(body);
+
+  try {
+    const res = await fetch(getBaseUrl() + path, opts);
+    let data;
+    const text = await res.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: text || `HTTP ${res.status} ${res.statusText}` };
+    }
+    if (!res.ok) throw { status: res.status, data };
+    return data;
+  } catch (err) {
+    if (err.status) throw err;
+    // Network / CORS error
+    throw { status: 0, data: { detail: err.message || 'Network error or CORS blocked.' } };
+  }
+}
+
+// ─── UTILITY: LOADING STATES ──────────────────────────────────────────────────
+function setLoading(module, on, steps) {
+  const loadingEl = document.getElementById('loading' + module);
+  const btnEl     = document.getElementById('btn' + module);
+  const prog      = document.getElementById('globalProgress');
+
+  loadingEl.classList.toggle('hidden', !on);
+  btnEl.disabled = on;
+  btnEl.style.opacity = on ? '0.5' : '1';
+  prog.style.display = on ? 'block' : 'none';
+
+  if (on && steps) animateLoadingSteps(module, steps);
+}
+
+function animateLoadingSteps(module, steps) {
+  const textEl = document.getElementById('loadingText' + module);
+  const stepEl = document.getElementById('step' + module);
+  if (!textEl) return;
+  let i = 0;
+  const tick = () => {
+    if (i >= steps.length) return;
+    textEl.textContent = steps[i].label;
+    if (stepEl) stepEl.textContent = steps[i].sub || '';
+    i++;
+    setTimeout(tick, steps[i - 1].ms || 2000);
+  };
+  tick();
+}
+
+// ─── UTILITY: TOAST ───────────────────────────────────────────────────────────
+function showToast(msg, type = 'error') {
+  const t = document.getElementById('toast');
+  const colours = {
+    error:   'bg-red-900/90 border-red-700 text-red-200',
+    success: 'bg-emerald-900/90 border-emerald-700 text-emerald-200',
+    warn:    'bg-amber-900/90 border-amber-700 text-amber-200',
+  };
+  t.className = `fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border p-4
+                 text-sm font-medium shadow-2xl ${colours[type] || colours.error}`;
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+}
+
+// ─── UTILITY: COPY ────────────────────────────────────────────────────────────
+function copyJson(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent)
+    .then(() => showToast('Copied to clipboard', 'success'))
+    .catch(() => showToast('Copy failed'));
+}
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent)
+    .then(() => showToast('SQL copied', 'success'))
+    .catch(() => showToast('Copy failed'));
+}
+
+// ─── UTILITY: SYNTAX HIGHLIGHT JSON ──────────────────────────────────────────
+function highlightJson(obj) {
+  const str = JSON.stringify(obj, null, 2);
+  return str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (m) => {
+    let cls = 'text-amber-400';  // number
+    if (/^"/.test(m)) {
+      cls = /:$/.test(m) ? 'text-sky-300' : 'text-emerald-300';  // key : string value
+    } else if (/true|false/.test(m)) {
+      cls = m === 'true' ? 'text-green-400' : 'text-red-400';
+    } else if (/null/.test(m)) {
+      cls = 'text-slate-500';
+    }
+    return `<span class="${cls}">${m}</span>`;
+  });
+}
+
+// ─── UTILITY: SQL HIGHLIGHT ───────────────────────────────────────────────────
+function highlightSql(sql) {
+  const keywords = ['SELECT','FROM','WHERE','AND','OR','NOT','LIMIT','ORDER','BY',
+                    'BETWEEN','JOIN','LEFT','INNER','ON','AS','HAVING','GROUP',
+                    'DISTINCT','ASC','DESC','IN','IS','NULL','LIKE','CURRENT_DATE',
+                    'INTERVAL','CURRENT_TIMESTAMP'];
+  let out = sql
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Strings in single quotes
+  out = out.replace(/'([^']*)'/g, `<span class="text-emerald-300">'$1'</span>`);
+  // Numbers
+  out = out.replace(/\b(\d+(?:\.\d+)?)\b/g, `<span class="text-amber-400">$1</span>`);
+  // Functions
+  out = out.replace(/\b(\w+)\s*\(/g, `<span class="text-blue-400">$1</span>(`);
+  // Keywords
+  const kwRe = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
+  out = out.replace(kwRe, `<span class="text-violet-400 font-semibold">$1</span>`);
+  // Comments
+  out = out.replace(/--(.*?)(\n|$)/g, `<span class="text-slate-500">--$1</span>$2`);
+
+  return out;
+}
+
+// ─── UTILITY: STATUS BADGE ───────────────────────────────────────────────────
+function statusBadge(status) {
+  const map = {
+    success:    ['badge-success',  '✓ success'],
+    partial:    ['badge-suspicious','~ partial'],
+    failed:     ['badge-failed',   '✗ failed'],
+    clean:      ['badge-clean',    '✓ clean'],
+    suspicious: ['badge-suspicious','⚠ suspicious'],
+    tampered:   ['badge-tampered', '⛔ tampered'],
+  };
+  const [cls, label] = map[status] || ['badge-failed', status];
+  return `<span class="text-xs px-2.5 py-1 rounded-full font-semibold ${cls}">${label}</span>`;
+}
+
+// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('healthDot');
+  dot.style.background = '#f59e0b';
+  try {
+    const r = await fetch(getBaseUrl() + '/health', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      dot.style.background = '#22c55e';
+      const d = await r.json();
+      showToast(`✓ Service OK · GPU: ${d.gpu?.device_name || 'N/A'} · Ollama: ${d.ollama_reachable ? 'up' : 'down'}`, 'success');
+    } else {
+      dot.style.background = '#ef4444';
+      showToast(`Health check failed: HTTP ${r.status}`);
+    }
+  } catch (e) {
+    dot.style.background = '#ef4444';
+    showToast(`Cannot reach ${getBaseUrl()} — is the service running?`);
+  }
+}
+
+// ─── TOKEN TOGGLE ─────────────────────────────────────────────────────────────
+function toggleTokenVisibility() {
+  const inp = document.getElementById('apiToken');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ─── FILE DROP/SELECT ─────────────────────────────────────────────────────────
+function handleDragOver(e, id) {
+  e.preventDefault();
+  document.getElementById(id).classList.add('drag-over');
+}
+function handleDragLeave(e, id) {
+  document.getElementById(id).classList.remove('drag-over');
+}
+function handleDrop(e, inputId, zoneId, previewId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById(inputId);
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  handleFileSelect(input, previewId, zoneId);
+}
+
+function handleFileSelect(input, previewId, zoneId) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('dropPlaceholder' + zoneId.slice(-1)).style.display = 'none';
+
+  if (previewId) {
+    const preview = document.getElementById(previewId);
+    const img = document.getElementById('previewImg' + zoneId.slice(-1));
+    const name = document.getElementById('previewName' + zoneId.slice(-1));
+    if (img && file.type.startsWith('image/')) {
+      img.src = URL.createObjectURL(file);
+      preview.classList.remove('hidden');
+      if (name) name.textContent = `${file.name} (${formatBytes(file.size)})`;
+    } else if (img && file.type === 'application/pdf') {
+      img.src = '';
+      preview.classList.remove('hidden');
+      if (name) name.textContent = `📄 ${file.name} (${formatBytes(file.size)})`;
+    }
+  }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + 'B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + 'KB';
+  return (b / 1024 / 1024).toFixed(2) + 'MB';
+}
+
+// ─── MODULE A: FDR ANALYZE ───────────────────────────────────────────────────
+async function runAnalyze() {
+  const fileInput = document.getElementById('fileA');
+  const docId     = document.getElementById('docIdA').value.trim();
+  const reqBy     = document.getElementById('requestedByA').value.trim();
+
+  if (!fileInput.files[0]) { showToast('Please select an FDR file first.', 'warn'); return; }
+  if (!docId) { showToast('Document ID is required.', 'warn'); return; }
+
+  setLoading('A', true, [
+    { label: 'Waiting for GPU lock…', sub: 'Other requests may hold the lock', ms: 2000 },
+    { label: 'Loading Qwen2.5-VL-3B into VRAM…', sub: 'NF4 4-bit quantisation · ~2.5 GB', ms: 8000 },
+    { label: 'Running visual extraction…', sub: 'Qwen analysing FDR layout…', ms: 5000 },
+    { label: 'Running math verification…', sub: 'Calculating expected maturity…', ms: 1000 },
+  ]);
+
+  document.getElementById('statusBadgeA').innerHTML = '';
+  document.getElementById('mathCard').classList.add('hidden');
+  document.getElementById('confidenceCard').classList.add('hidden');
+  document.getElementById('jsonA').innerHTML = '<span class="text-slate-600">// Waiting for response…</span>';
+
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+  fd.append('document_id', docId);
+  fd.append('requested_by', reqBy);
+
+  try {
+    const data = await apiCall('POST', '/api/v1/fdr/analyze', fd, true);
+    renderAnalyzeResponse(data);
+  } catch (err) {
+    renderError('jsonA', err);
+    showToast(formatError(err));
+  } finally {
+    setLoading('A', false);
+  }
+}
+
+function renderAnalyzeResponse(data) {
+  // Status badge
+  document.getElementById('statusBadgeA').innerHTML = statusBadge(data.status);
+
+  // Math verification
+  const mv = data.math_verification;
+  const mathCard = document.getElementById('mathCard');
+  const mathBadge = document.getElementById('mathBadge');
+  const mathDetails = document.getElementById('mathDetails');
+  mathCard.classList.remove('hidden');
+
+  if (!mv.check_was_possible) {
+    mathCard.className = 'math-skip rounded-xl border border-slate-700/40 bg-surface-700/20 p-4 space-y-2';
+    mathBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-600';
+    mathBadge.textContent = '⊘ Skipped (incomplete scan)';
+    mathDetails.innerHTML = `<div class="text-slate-500">${mv.flag_reason || 'Math check could not run.'}</div>`;
+  } else if (mv.is_mathematically_valid) {
+    mathCard.className = 'math-pass rounded-xl border border-emerald-900/40 bg-emerald-900/10 p-4 space-y-2';
+    mathBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700';
+    mathBadge.textContent = '✓ Math Valid';
+    mathDetails.innerHTML = `
+      <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
+        <span>Expected:</span><span class="text-emerald-300">₹${fmt(mv.expected_maturity_amount)}</span>
+        <span>Printed:</span><span class="text-emerald-300">₹${fmt(mv.printed_maturity_amount)}</span>
+        <span>Discrepancy:</span><span class="text-emerald-400">${mv.discrepancy_percent !== null ? mv.discrepancy_percent.toFixed(4) + '%' : 'N/A'}</span>
+        <span>Tolerance:</span><span>±${mv.tolerance_used_percent}%</span>
+      </div>`;
+  } else {
+    mathCard.className = 'math-fail rounded-xl border border-red-900/40 bg-red-900/10 p-4 space-y-2';
+    mathBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-900/60 text-red-300 border border-red-700';
+    mathBadge.textContent = '⚠ Math FAILED — Possible Tampering';
+    mathDetails.innerHTML = `
+      <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
+        <span>Expected:</span><span class="text-blue-300">₹${fmt(mv.expected_maturity_amount)}</span>
+        <span>Printed:</span><span class="text-red-300">₹${fmt(mv.printed_maturity_amount)}</span>
+        <span>Discrepancy:</span><span class="text-red-400 font-bold">${mv.discrepancy_percent !== null ? mv.discrepancy_percent.toFixed(4) + '%' : 'N/A'}</span>
+        <span>Tolerance:</span><span>±${mv.tolerance_used_percent}%</span>
+      </div>
+      <div class="text-red-300 text-xs mt-2 leading-relaxed">${mv.flag_reason || ''}</div>`;
+  }
+
+  // Confidence
+  const conf = data.confidence;
+  if (conf) {
+    document.getElementById('confidenceCard').classList.remove('hidden');
+    const pct = Math.round(conf.overall_score * 100);
+    document.getElementById('confidenceScore').textContent = pct + '%';
+    const bar = document.getElementById('confidenceBar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const lc = conf.low_confidence_fields || [];
+    document.getElementById('lowConfFields').textContent =
+      lc.length ? '⚠ Low confidence: ' + lc.join(', ') : '';
+  }
+
+  // JSON
+  document.getElementById('jsonA').innerHTML = highlightJson(data.extracted_fields || data);
+  showToast(`Extraction ${data.status} · ${data.processing_time_ms}ms`, 'success');
+}
+
+// ─── MODULE B: FORENSICS ──────────────────────────────────────────────────────
+async function runForensics() {
+  const fileInput = document.getElementById('fileB');
+  const docId     = document.getElementById('docIdB').value.trim();
+  const returnEla = document.getElementById('returnElaImage').checked;
+
+  if (!fileInput.files[0]) { showToast('Please select an FDR image first.', 'warn'); return; }
+
+  // Store original image for overlay
+  state.originalImageB = URL.createObjectURL(fileInput.files[0]);
+
+  setLoading('B', true);
+  document.getElementById('tamperMeter').classList.add('hidden');
+  document.getElementById('elaContainer').classList.add('hidden');
+  document.getElementById('noImageB').classList.add('hidden');
+
+  // Show image in container immediately
+  renderImageForensics(state.originalImageB, []);
+
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+  fd.append('document_id', docId);
+  fd.append('return_ela_image', returnEla ? 'true' : 'false');
+
+  try {
+    const data = await apiCall('POST', '/api/v1/fdr/forensics', fd, true);
+    renderForensicsResponse(data);
+  } catch (err) {
+    renderError(null, err);
+    showToast(formatError(err));
+    document.getElementById('noImageB').classList.remove('hidden');
+    document.getElementById('imageContainerB').classList.add('hidden');
+  } finally {
+    setLoading('B', false);
+  }
+}
+
+function renderImageForensics(src, regions) {
+  const container = document.getElementById('imageContainerB');
+  container.classList.remove('hidden');
+  container.innerHTML = '';
+
+  // Outer wrapper for positioning
+  const wrapper = document.createElement('div');
+  wrapper.className = 'bbox-wrapper';
+  wrapper.id = 'bboxWrapper';
+
+  const img = document.createElement('img');
+  img.id = 'forensicsImg';
+  img.src = src;
+  img.className = 'max-w-full rounded-lg object-contain';
+  img.style.display = 'block';
+  img.style.maxHeight = '380px';
+
+  img.onload = () => {
+    // Now we know both intrinsic and rendered size — draw boxes
+    drawBoundingBoxes(img, regions);
+  };
+
+  wrapper.appendChild(img);
+  container.appendChild(wrapper);
+
+  // Store regions for redraw on window resize
+  state.bboxData = regions;
+
+  // Redraw on resize (responsive scaling)
+  window.addEventListener('resize', () => {
+    const i = document.getElementById('forensicsImg');
+    if (i) drawBoundingBoxes(i, state.bboxData);
+  });
+}
+
+function drawBoundingBoxes(img, regions) {
+  // Remove existing boxes
+  const wrapper = document.getElementById('bboxWrapper');
+  if (!wrapper) return;
+  wrapper.querySelectorAll('.bbox-rect').forEach(el => el.remove());
+
+  if (!regions || regions.length === 0) return;
+
+  // Key math: scale API pixel coords → rendered HTML pixel coords
+  // img.naturalWidth/Height = original image dimensions (what API used)
+  // img.offsetWidth/Height  = how large the image is rendered in the DOM
+  const scaleX = img.offsetWidth  / img.naturalWidth;
+  const scaleY = img.offsetHeight / img.naturalHeight;
+
+  regions.forEach(region => {
+    const [x, y, w, h] = region.bounding_box;
+
+    const rect = document.createElement('div');
+    rect.className = 'bbox-rect';
+    rect.style.left   = (x * scaleX) + 'px';
+    rect.style.top    = (y * scaleY) + 'px';
+    rect.style.width  = (w * scaleX) + 'px';
+    rect.style.height = (h * scaleY) + 'px';
+
+    // Confidence-based opacity
+    const opacity = 0.15 + region.confidence * 0.25;
+    rect.style.background = `rgba(239,68,68,${opacity})`;
+
+    // Colour-code by anomaly type
+    const typeColours = {
+      digital_alteration: '#f97316',  // orange
+      seal_overlay:       '#a855f7',  // purple
+      copy_paste:         '#ef4444',  // red
+      compression_artifact: '#eab308', // yellow
+    };
+    rect.style.borderColor = typeColours[region.anomaly_type] || '#ef4444';
+
+    // Label
+    const label = document.createElement('div');
+    label.className = 'bbox-label';
+    label.style.background = typeColours[region.anomaly_type] || '#ef4444';
+    label.textContent = `#${region.region_id} · ${(region.confidence*100).toFixed(0)}%`;
+    rect.appendChild(label);
+
+    // Tooltip
+    rect.title = `${region.anomaly_type.replace(/_/g,' ')}\n${region.description}`;
+
+    wrapper.appendChild(rect);
+  });
+}
+
+function renderForensicsResponse(data) {
+  // Redraw image with real bounding boxes from API
+  const img = document.getElementById('forensicsImg');
+  if (img) {
+    state.bboxData = data.flagged_regions || [];
+    drawBoundingBoxes(img, state.bboxData);
+  }
+
+  // Tamper meter
+  const meter = document.getElementById('tamperMeter');
+  meter.classList.remove('hidden');
+
+  const score = data.tamper_probability_score;
+  const pct   = Math.round(score * 100);
+  document.getElementById('tamperScore').textContent = (score * 100).toFixed(1) + '%';
+  document.getElementById('tamperStatus').outerHTML =
+    `<span id="tamperStatus">${statusBadge(data.status)}</span>`;
+
+  const bar = document.getElementById('tamperBar');
+  bar.style.width = pct + '%';
+  bar.style.background = score < 0.35 ? '#22c55e' : score < 0.60 ? '#f59e0b' : '#ef4444';
+
+  // Regions list
+  const list = document.getElementById('regionsList');
+  list.innerHTML = '';
+  (data.flagged_regions || []).forEach(r => {
+    const colours = {
+      digital_alteration: 'text-orange-400 border-orange-800/40 bg-orange-900/10',
+      seal_overlay:       'text-purple-400 border-purple-800/40 bg-purple-900/10',
+      copy_paste:         'text-red-400 border-red-800/40 bg-red-900/10',
+      compression_artifact:'text-yellow-400 border-yellow-800/40 bg-yellow-900/10',
+    };
+    const cls = colours[r.anomaly_type] || 'text-red-400 border-red-800/40 bg-red-900/10';
+    list.innerHTML += `
+      <div class="rounded-lg border ${cls} p-2.5">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <span class="text-xs font-semibold">#${r.region_id} · ${r.anomaly_type.replace(/_/g,' ')}</span>
+            <p class="text-xs text-slate-400 mt-0.5 leading-snug">${r.description}</p>
+          </div>
+          <span class="text-xs font-mono whitespace-nowrap">${(r.confidence*100).toFixed(1)}%</span>
+        </div>
+        <div class="text-xs text-slate-600 font-mono mt-1">
+          bbox [${r.bounding_box.join(', ')}]
+        </div>
+      </div>`;
+  });
+
+  // ELA heatmap
+  if (data.ela_image_base64) {
+    state.elaImageBase64 = data.ela_image_base64;
+    document.getElementById('elaContainer').classList.remove('hidden');
+    document.getElementById('elaHeatmap').src = 'data:image/png;base64,' + data.ela_image_base64;
+    document.getElementById('toggleElaBtn').classList.remove('hidden');
+  }
+
+  showToast(`Forensics: ${data.status} · score=${(score*100).toFixed(1)}% · ${data.processing_time_ms}ms`,
+    score < 0.35 ? 'success' : 'warn');
+}
+
+function toggleElaOverlay() {
+  const img = document.getElementById('forensicsImg');
+  if (!img) return;
+  state.elaOverlayActive = !state.elaOverlayActive;
+  if (state.elaOverlayActive && state.elaImageBase64) {
+    img.src = 'data:image/png;base64,' + state.elaImageBase64;
+  } else {
+    img.src = state.originalImageB;
+  }
+  document.getElementById('toggleElaBtn').textContent =
+    state.elaOverlayActive ? 'Show Original' : 'Toggle ELA';
+}
+
+// ─── MODULE C: NL2SQL ─────────────────────────────────────────────────────────
+async function runNl2sql() {
+  const query  = document.getElementById('nlQuery').value.trim();
+  const schema = document.getElementById('schemaCtx').value.trim();
+  const maxRows = parseInt(document.getElementById('maxRows').value) || 100;
+
+  if (!query) { showToast('Please enter a natural language query.', 'warn'); return; }
+  if (!schema) { showToast('Schema context is required.', 'warn'); return; }
+
+  setLoading('C', true, [
+    { label: 'Acquiring GPU lock…', sub: 'Checking if Qwen is resident in VRAM', ms: 2000 },
+    { label: 'Evicting Qwen from VRAM…', sub: 'torch.cuda.empty_cache() + gc.collect()', ms: 4000 },
+    { label: 'Sending to Ollama (Llama 3.2 3B)…', sub: 'Q4_K_M inference in progress…', ms: 8000 },
+    { label: 'Parsing and safety-checking SQL…', sub: 'Lexical audit running…', ms: 1000 },
+  ]);
+
+  document.getElementById('sqlOutput').innerHTML = '<span class="text-slate-600">-- Generating…</span>';
+  document.getElementById('explanationCard').classList.add('hidden');
+  document.getElementById('safetyAuditCard').classList.add('hidden');
+  document.getElementById('safetyBadge').classList.add('hidden');
+  document.getElementById('timingC').classList.add('hidden');
+
+  try {
+    const data = await apiCall('POST', '/api/v1/search/nl2sql', {
+      query, schema_context: schema, max_rows_hint: maxRows,
+    });
+    renderNl2sqlResponse(data);
+  } catch (err) {
+    // HTTP 422 from safety check failure
+    if (err.status === 422) {
+      const d = err.data;
+      document.getElementById('sqlOutput').innerHTML =
+        `<span class="text-red-400">-- ⛔ Safety check failed: ${d.detail?.error || 'Unsafe SQL generated'}</span>`;
+      showToast('Safety check failed — LLM generated non-SELECT SQL.', 'error');
+    } else {
+      document.getElementById('sqlOutput').innerHTML =
+        `<span class="text-red-400">-- Error: ${formatError(err)}</span>`;
+      showToast(formatError(err));
+    }
+  } finally {
+    setLoading('C', false);
+  }
+}
+
+function renderNl2sqlResponse(data) {
+  // SQL block
+  document.getElementById('sqlOutput').innerHTML = highlightSql(data.generated_sql);
+
+  // Model badge
+  const mb = document.getElementById('sqlModelBadge');
+  mb.textContent = data.model_used || '';
+  mb.classList.remove('hidden');
+
+  // Safety badge
+  const sb = document.getElementById('safetyBadge');
+  sb.classList.remove('hidden');
+  const st = document.getElementById('safetyText');
+  if (data.safety_check?.passed) {
+    st.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700';
+    st.textContent = '✓ Safety Passed';
+  } else {
+    st.className = 'text-xs px-2 py-0.5 rounded-full bg-red-900/60 text-red-300 border border-red-700';
+    st.textContent = '⚠ Safety Failed';
+  }
+
+  // Explanation
+  if (data.explanation) {
+    document.getElementById('explanationCard').classList.remove('hidden');
+    document.getElementById('explanationText').textContent = data.explanation;
+  }
+
+  // Safety audit grid
+  const audit = data.safety_check;
+  if (audit) {
+    document.getElementById('safetyAuditCard').classList.remove('hidden');
+    const checks = document.getElementById('safetyChecks');
+    checks.innerHTML = '';
+    const items = [
+      ['is_read_only', 'Read-only', true],
+      ['contains_delete', 'No DELETE', false],
+      ['contains_drop', 'No DROP', false],
+      ['contains_insert', 'No INSERT', false],
+      ['contains_update', 'No UPDATE', false],
+      ['contains_truncate', 'No TRUNCATE', false],
+      ['contains_create', 'No CREATE', false],
+      ['contains_alter', 'No ALTER', false],
+    ];
+    items.forEach(([key, label, expectTrue]) => {
+      const val = audit[key];
+      const ok  = expectTrue ? val === true : val === false;
+      checks.innerHTML += `
+        <div class="flex items-center gap-1.5 text-xs ${ok ? 'text-emerald-400' : 'text-red-400'}">
+          <span>${ok ? '✓' : '✗'}</span>
+          <span>${label}</span>
+        </div>`;
+    });
+  }
+
+  // Timing
+  const tc = document.getElementById('timingC');
+  tc.classList.remove('hidden');
+  tc.textContent = `${data.model_used} · ${data.processing_time_ms}ms`;
+
+  showToast(`SQL generated successfully · ${data.processing_time_ms}ms`, 'success');
+}
+
+// ─── NL2SQL PRESETS ───────────────────────────────────────────────────────────
+function setQuery(btn) {
+  document.getElementById('nlQuery').value = btn.dataset.query;
+}
+
+function resetSchema() {
+  document.getElementById('schemaCtx').value = DEFAULT_SCHEMA;
+}
+
+// ─── ERROR HELPERS ────────────────────────────────────────────────────────────
+function renderError(preId, err) {
+  const msg = err.status === 0
+    ? `Network Error: ${err.data?.detail || 'Cannot reach the API server. Check if FastAPI is running and CORS is configured.'}`
+    : `HTTP ${err.status}: ${JSON.stringify(err.data, null, 2)}`;
+  if (preId) {
+    document.getElementById(preId).innerHTML =
+      `<span class="text-red-400">${msg}</span>`;
+  }
+}
+
+function formatError(err) {
+  if (err.status === 0) return `Connection failed — is FastAPI running at ${getBaseUrl()}?`;
+  if (err.status === 401) return 'Unauthorized — check your X-Internal-Token.';
+  if (err.status === 422) return 'Validation error — check request format.';
+  if (err.status === 415) return 'Unsupported media type — ELA requires a raster image, not PDF.';
+  if (err.status === 503) return 'Service unavailable — Ollama may be down.';
+  return `HTTP ${err.status}: ${err.data?.detail || 'Unknown error'}`;
+}
+
+function fmt(n) {
+  if (n == null) return 'N/A';
+  return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Auto-check health on load
+  checkHealth();
+  // Restore token from sessionStorage (or use default)
+  const saved = sessionStorage.getItem('ns_token');
+  if (saved && saved.trim() !== '') {
+    document.getElementById('apiToken').value = saved;
+  } else {
+    document.getElementById('apiToken').value = 'change-me-before-deploying-a-very-long-secret-key';
+  }
+  document.getElementById('apiToken').addEventListener('input', e => {
+    sessionStorage.setItem('ns_token', e.target.value);
+  });
+});
+</script>
+</body>
+</html>
