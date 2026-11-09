@@ -1,0 +1,64 @@
+# =============================================================================
+# Nidhi-Setu AI Microservice — requirements.txt
+# Target Hardware : NVIDIA RTX 2050 · 4 GB VRAM · Windows / Air-gapped Linux
+# Python Version  : 3.11+
+# =============================================================================
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6          # ASGI server with WebSocket & HTTP/2 support
+python-multipart==0.0.9            # Required for multipart/form-data file uploads
+
+# ── Data Validation & Settings ────────────────────────────────────────────────
+pydantic==2.8.2
+pydantic-settings==2.4.0           # .env file loading via BaseSettings
+
+# ── PyTorch (CUDA 12.1 — matches RTX 2050 driver stack) ──────────────────────
+# Install via: pip install torch==2.4.1+cu121 torchvision==0.19.1+cu121
+#              --index-url https://download.pytorch.org/whl/cu121
+torch==2.4.1+cu121
+torchvision==0.19.1+cu121
+
+# ── HuggingFace Inference Stack ───────────────────────────────────────────────
+transformers==4.46.0               # Qwen2.5-VL-3B model loading
+accelerate==0.34.0                 # device_map="auto" support
+bitsandbytes==0.43.3               # 4-bit NF4 quantization (NF4 + double quant)
+# NOTE: On Windows, install the pre-built bitsandbytes CUDA wheel:
+#   pip install bitsandbytes --index-url https://huggingface.github.io/bitsandbytes-windows-webui
+
+# ── Qwen2.5-VL Image Preprocessing ───────────────────────────────────────────
+qwen-vl-utils==0.0.8               # Official Qwen2.5-VL vision preprocessing utilities
+
+# ── LangChain + Ollama (NL2SQL — Llama 3.2 3B) ───────────────────────────────
+langchain==0.3.7
+langchain-core==0.3.15
+langchain-ollama==0.2.0            # LangChain ↔ Ollama integration
+ollama==0.3.3                      # Python client for Ollama REST API
+
+# ── Computer Vision — ELA Forensics Pipeline (CPU) ───────────────────────────
+opencv-python-headless==4.10.0.84  # Headless: no GUI deps, safe for servers
+Pillow==10.4.0                     # PIL image I/O (JPEG re-save for ELA)
+numpy==1.26.4
+scipy==1.14.1                      # Optional: Gaussian blur for ELA smoothing
+
+# ── PDF → Image Rasterization ─────────────────────────────────────────────────
+PyMuPDF==1.24.10                   # fitz: pure-Python PDF parser, zero external deps
+                                   # DO NOT use pdf2image or Poppler (Windows incompatible)
+
+# ── Async HTTP & File I/O ─────────────────────────────────────────────────────
+httpx==0.27.2                      # Async HTTP client (Ollama health check + calls)
+aiofiles==24.1.0                   # Async file read/write
+
+# ── Resilience ────────────────────────────────────────────────────────────────
+tenacity==9.0.0                    # Retry logic for Ollama inference calls
+
+# ── Structured Logging ────────────────────────────────────────────────────────
+structlog==24.4.0                  # JSON-formatted logs for production
+
+# ── Security ─────────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0   # JWT verification (for optional Java JWT passthrough)
+
+# ── Testing (dev only) ────────────────────────────────────────────────────────
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx                              # Already listed above; used as AsyncClient in tests
